@@ -1,0 +1,41 @@
+{
+  "cus_free_001": {
+    "plan": "Free",
+    "region": "US",
+    "tenure": "4 months",
+    "first_contact": true,
+    "notes": "First time contacting support. Attempted to upgrade to Pro.",
+    "billing": {
+      "active_subscription": "Free",
+      "recent_charge_attempts": [
+        {"ts": "3h ago", "amount": 29.99, "currency": "USD", "status": "failed"},
+        {"ts": "2h ago", "amount": 29.99, "currency": "USD", "status": "pending_authorization"},
+        {"ts": "2h ago", "amount": 29.99, "currency": "USD", "status": "pending_authorization"},
+        {"ts": "1h ago", "amount": 29.99, "currency": "USD", "status": "pending_authorization"}
+      ],
+      "captured_payments": [],
+      "note": "3 pending card authorizations detected; none captured. Account still on Free."
+    },
+    "past_tickets": 0
+  },
+  "cus_ent_8842": {
+    "plan": "Enterprise",
+    "region": "Asia (Thailand)",
+    "seats": 45,
+    "tenure": "8 months",
+    "first_contact": false,
+    "notes": "First critical issue. Key account; renewal in 4 months.",
+    "account_manager": "assigned",
+    "billing": {"active_subscription": "Enterprise", "status": "current"},
+    "past_tickets": 3
+  },
+  "cus_pro_777": {
+    "plan": "Pro",
+    "region": "US",
+    "tenure": "5 months",
+    "first_contact": true,
+    "notes": "Active daily user. No previous support tickets.",
+    "billing": {"active_subscription": "Pro", "status": "current"},
+    "past_tickets": 0
+  }
+}

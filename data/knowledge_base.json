@@ -1,0 +1,62 @@
+[
+  {
+    "id": "KB-101",
+    "title": "Payment failed when upgrading to Pro",
+    "body": "Upgrade payments can fail due to card declines, insufficient funds, or 3-D Secure (OTP) not completed. Ask the customer to confirm the bank approved the charge. A failed charge is not captured, so no money leaves the account even if the bank shows a temporary hold.",
+    "tags": ["billing", "payment", "upgrade", "pro", "card", "declined", "failed"]
+  },
+  {
+    "id": "KB-102",
+    "title": "Duplicate or multiple pending charges after retrying",
+    "body": "Retrying a failed upgrade can create several PENDING card authorizations. These are holds, not captured payments. Uncaptured authorizations are released automatically by the bank, typically within 5-7 business days. If any charge was actually captured, Billing can issue an immediate refund. Never promise a refund for a charge that was only authorized.",
+    "tags": ["billing", "duplicate", "charges", "pending", "authorization", "refund", "hold"]
+  },
+  {
+    "id": "KB-103",
+    "title": "What Pro unlocks (including export features)",
+    "body": "Pro includes advanced export (PDF/CSV/high-res), priority processing, and higher limits. Pro access activates only after a payment is successfully captured and the subscription shows Pro.",
+    "tags": ["pro", "upgrade", "export", "features", "subscription"]
+  },
+  {
+    "id": "KB-201",
+    "title": "Troubleshooting HTTP 500 errors",
+    "body": "A 500 is a server-side error. If multiple users or devices are affected and the same error appears across browsers, treat it as a potential incident rather than a client issue. Check the internal service-status tool for the customer's region before responding.",
+    "tags": ["error", "500", "outage", "server", "incident", "troubleshooting"]
+  },
+  {
+    "id": "KB-202",
+    "title": "Public status page shows operational but users report an outage",
+    "body": "The public status page can lag or aggregate globally and may show 'operational' during a regional incident. Always confirm with the internal per-region status. For enterprise accounts affected during business hours, escalate to Infrastructure / On-call immediately.",
+    "tags": ["status", "operational", "region", "asia", "outage", "incident", "enterprise"]
+  },
+  {
+    "id": "KB-203",
+    "title": "Enterprise access and regional incidents",
+    "body": "Enterprise customers with many seats blocked at once are high priority, especially during a scheduled demo or business-critical window. Provide an incident id, an ETA if available, and a named owner. Offer proactive updates until resolved.",
+    "tags": ["enterprise", "access", "seats", "incident", "region", "escalation", "demo"]
+  },
+  {
+    "id": "KB-301",
+    "title": "Dark mode availability",
+    "body": "Appearance options live under Settings > Appearance. Dark mode is being rolled out gradually and may not yet be enabled on every account; currently some users see only 'Light' and 'System Default'. 'System Default' follows the operating system theme once dark mode is enabled for the account.",
+    "tags": ["dark mode", "appearance", "theme", "settings", "rollout", "feature"]
+  },
+  {
+    "id": "KB-302",
+    "title": "Scheduling theme changes (auto dark mode)",
+    "body": "Automatic time-based theme switching (e.g. dark after 6pm) is not available yet. 'System Default' is the closest option, inheriting the OS schedule. Scheduled theming is tracked on the product roadmap; log customer interest as a feature request.",
+    "tags": ["dark mode", "schedule", "auto", "theme", "appearance", "roadmap", "feature request"]
+  },
+  {
+    "id": "KB-401",
+    "title": "Refunds, chargebacks and payment disputes",
+    "body": "If a customer threatens a bank dispute/chargeback, route to Billing with high priority. Confirm which charges were captured vs only authorized, reassure the customer that uncaptured holds release automatically, and offer to expedite reversal of any captured duplicates. Document everything for the dispute record.",
+    "tags": ["refund", "chargeback", "dispute", "billing", "bank", "escalation"]
+  },
+  {
+    "id": "KB-402",
+    "title": "Support response times by plan",
+    "body": "Target first response: Enterprise 1 hour, Pro 4 hours, Free 2 business days. Critical outages and confirmed billing errors override the standard SLA and are handled immediately regardless of plan.",
+    "tags": ["sla", "response", "time", "plan", "enterprise", "pro", "free", "priority"]
+  }
+]
