@@ -65,10 +65,16 @@ class TriageResult(BaseModel):
     ticket_id: str
     urgency: Urgency
     urgency_reason: str = Field(..., description="One sentence justifying the urgency.")
-    product_area: str = Field(..., description="Product/feature the ticket is about.")
-    issue_type: str = Field(..., description="e.g. billing, outage, bug, feature_request.")
+    product_area: str = Field(
+        ..., description="Product/feature area, free-form (e.g. 'Payments & subscriptions')."
+    )
+    issue_type: str = Field(
+        ..., description="Issue category, free-form (e.g. billing, outage, bug, feature_request)."
+    )
     sentiment: Sentiment
-    sentiment_trend: str = Field(..., description="e.g. escalating, stable, calm.")
+    sentiment_trend: str = Field(
+        ..., description="How sentiment moves across the thread, free-form (e.g. escalating, stable, calm)."
+    )
     key_facts: list[str] = Field(default_factory=list, description="Salient extracted facts.")
     kb_references: list[KBReference] = Field(default_factory=list)
     recommended_action: Action
@@ -107,7 +113,7 @@ def triage_json_schema() -> dict[str, Any]:
                     "properties": {
                         "doc_id": {"type": "string"},
                         "title": {"type": "string"},
-                        "relevance": {"type": "number"},
+                        "relevance": {"type": "number", "minimum": 0.0, "maximum": 1.0},
                     },
                     "required": ["doc_id", "title", "relevance"],
                 },

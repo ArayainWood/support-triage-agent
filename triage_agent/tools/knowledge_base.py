@@ -22,7 +22,11 @@ from typing import Any
 from ..config import DATA_DIR, settings
 from .registry import Tool
 
-# Match latin word characters and the Thai block, so Thai queries retrieve too.
+# Tokenize latin words and Thai characters. Note: Thai is written without spaces,
+# so a whole Thai phrase collapses into one token and the KB corpus here is English;
+# genuine cross-lingual matching relies on the query being in English (the mock's
+# _kb_query does this) or on the embedding retriever. This mainly keeps Thai input
+# from breaking tokenization rather than making Thai keyword search effective.
 _WORD = re.compile(r"[a-zA-Z0-9฀-๿]+")
 
 
@@ -96,10 +100,14 @@ class EmbeddingRetriever(Retriever):
         return [(d, round(max(s, 0.0), 3)) for d, s in scored[:top_k]]
 
 
-def build_retriever(docs: list[dict[str, Any]]) -> Retriever:
-    if settings.retriever == "embedding" and settings.has_api_key and not settings.use_mock:
-        return EmbeddingRetriever(docs)
-    return LexicalRetriever(docs)
+def build_retriever(docs: list[dict[str, Any]], offline: bool = False) -> Retriever:
+    use_embedding = (
+        settings.retriever == "embedding"
+        and settings.has_api_key
+        and not settings.use_mock
+        and not offline  # --mock / offline always forces the no-network retriever
+    )
+    return EmbeddingRetriever(docs) if use_embedding else LexicalRetriever(docs)
 
 
 class KnowledgeBaseTool(Tool):
@@ -125,10 +133,10 @@ class KnowledgeBaseTool(Tool):
         "required": ["query"],
     }
 
-    def __init__(self, source: Path | None = None):
+    def __init__(self, source: Path | None = None, offline: bool = False):
         path = source or (DATA_DIR / "knowledge_base.json")
         self._docs: list[dict[str, Any]] = json.loads(path.read_text(encoding="utf-8"))
-        self._retriever = build_retriever(self._docs)
+        self._retriever = build_retriever(self._docs, offline=offline)
 
     def run(self, query: str, top_k: int = 3) -> dict[str, Any]:
         hits = self._retriever.search(query, top_k)

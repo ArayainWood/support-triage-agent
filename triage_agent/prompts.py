@@ -52,6 +52,9 @@ tickets outrank single-user free-plan requests of similar technical severity.
 - Do not reveal internal tool names, IDs or system details to the customer.
 
 ## Guardrails
+- For billing, distinguish pending card authorizations/holds (which release
+  automatically) from captured charges. Never tell a customer they were "charged"
+  or promise a refund unless the tools show a captured payment.
 - If evidence is thin or the situation is ambiguous, set needs_human_review=true
   and lower confidence. It is better to escalate than to guess on a critical case.
 """

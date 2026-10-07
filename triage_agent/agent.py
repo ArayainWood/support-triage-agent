@@ -23,6 +23,18 @@ from .tools.registry import Tool, ToolRegistry
 SUBMIT_TOOL_NAME = "submit_triage"
 
 
+def _clamp01(value: Any) -> Any:
+    """Clamp a value to [0, 1] when it is numeric; otherwise leave it unchanged.
+
+    A real model occasionally emits an out-of-range score (e.g. a 0-100 relevance).
+    Clamping here keeps one stray number from failing validation of the whole result.
+    """
+    try:
+        return max(0.0, min(1.0, float(value)))
+    except (TypeError, ValueError):
+        return value
+
+
 def _submit_tool_schema() -> dict[str, Any]:
     return {
         "type": "function",
@@ -101,6 +113,12 @@ class TriageAgent:
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"submit_triage returned invalid JSON: {exc}") from exc
         data.setdefault("ticket_id", ticket.id)
+        # Defensively clamp scores so one out-of-range value does not fail the ticket.
+        if "confidence" in data:
+            data["confidence"] = _clamp01(data["confidence"])
+        for ref in data.get("kb_references") or []:
+            if isinstance(ref, dict) and "relevance" in ref:
+                ref["relevance"] = _clamp01(ref["relevance"])
         try:
             return TriageResult.model_validate(data)
         except ValidationError as exc:

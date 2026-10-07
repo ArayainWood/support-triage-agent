@@ -19,6 +19,7 @@ from .base import LLMResponse, ToolCall
 _THAI = re.compile(r"[฀-๿]")
 _CUSTOMER_ID = re.compile(r"customer_id:\s*(\S+)")
 _TICKET_ID = re.compile(r"ticket_id:\s*(\S+)")
+_REGION = re.compile(r"region:\s*(.+)")
 
 
 def _has(text: str, *needles: str) -> bool:
@@ -29,7 +30,8 @@ def _has(text: str, *needles: str) -> bool:
 class MockLLMClient:
     """Drives the agent loop deterministically for offline runs and tests."""
 
-    _counter = 0
+    def __init__(self) -> None:
+        self._counter = 0  # per-instance so tool-call ids are reproducible per run
 
     def complete(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
@@ -52,7 +54,9 @@ class MockLLMClient:
             ]
             if _has(ticket_text, "500", "error", "down", "can't access",
                     "cannot access", "เข้าไม่ได้", "outage", "operational"):
-                region = (customer or {}).get("region") or "global"
+                # Resolve region from the ticket itself — the customer record has
+                # not been fetched yet in this same turn, so we cannot rely on it.
+                region = self._field(messages, _REGION, "global")
                 calls.append(
                     self._call("check_service_status", {"region": self._region_key(region)})
                 )
@@ -64,9 +68,9 @@ class MockLLMClient:
 
     # -- loop plumbing -------------------------------------------------------
     def _call(self, name: str, args: dict[str, Any]) -> ToolCall:
-        MockLLMClient._counter += 1
+        self._counter += 1
         return ToolCall(
-            id=f"mock_{MockLLMClient._counter}",
+            id=f"mock_{self._counter}",
             name=name,
             arguments=json.dumps(args, ensure_ascii=False),
         )
@@ -196,7 +200,8 @@ class MockLLMClient:
             return base + (" and an internal check confirms a regional incident." if degraded
                            else "; needs infrastructure confirmation.")
         if issue == "billing":
-            return "Customer charged multiple times without receiving the paid service and is threatening a dispute."
+            return ("Customer sees multiple pending card authorizations (none captured yet) "
+                    "for a still-failed Pro upgrade and is threatening a bank dispute.")
         if issue == "feature_request":
             return "Low-risk product question with positive tone and no urgency."
         return f"Standard {issue} request on the {plan} plan."

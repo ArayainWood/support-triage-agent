@@ -49,7 +49,9 @@ class ToolRegistry:
         raised, so one bad call cannot crash the whole triage run.
         """
         if name not in self._tools:
-            return json.dumps({"error": f"unknown tool '{name}'"})
+            return json.dumps(
+                {"error": f"unknown tool '{name}'", "available_tools": self.names()}
+            )
         try:
             args = json.loads(arguments) if isinstance(arguments, str) else dict(arguments)
             result = self._tools[name].run(**args)

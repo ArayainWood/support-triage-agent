@@ -55,7 +55,7 @@ python main.py                 # triage all sample tickets (real model)
 python main.py --mock          # offline deterministic backend, no key needed
 python main.py --ticket t2     # triage only ticket t2 (the Thai outage case)
 python main.py --json          # machine-readable JSON output
-python -m pytest -q            # run the test-suite (uses the mock, no key)
+pytest -q                      # run the test-suite (uses the mock, no key)
 ```
 
 ### Configuration (optional)
@@ -70,6 +70,20 @@ All via environment variables / `.env` (defaults in parentheses):
 | `MAX_AGENT_STEPS`        | Max tool-calling rounds per ticket (`6`)            |
 | `TEMPERATURE`            | Sampling temperature (`0.2`)                        |
 | `USE_MOCK`               | `1` forces the offline backend                      |
+
+### Packaging for submission (zip)
+
+If you submit a zip instead of a Git link, export a **clean** archive so no local
+virtual environment or cache is bundled (those are machine-specific and would not
+work on another computer):
+
+```bash
+git archive --format=zip -o submission.zip HEAD
+```
+
+This honors `.gitignore`, so `.venv/`, `.env`, and caches are excluded automatically.
+To verify, extract into a fresh folder, create a new venv, `pip install -r requirements.txt`,
+then `python main.py --mock` and `pytest -q`.
 
 ---
 

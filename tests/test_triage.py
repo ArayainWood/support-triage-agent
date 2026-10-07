@@ -12,7 +12,14 @@ import pytest
 from triage_agent.agent import TriageAgent
 from triage_agent.cli import load_tickets
 from triage_agent.llm.mock_client import MockLLMClient
-from triage_agent.schemas import Action, Sentiment, TriageResult, Urgency
+from triage_agent.schemas import (
+    Action,
+    Sentiment,
+    TriageResult,
+    Urgency,
+    triage_json_schema,
+)
+from triage_agent.tools import default_tools
 from triage_agent.tools.customer_history import CustomerHistoryTool
 from triage_agent.tools.knowledge_base import KnowledgeBaseTool
 from triage_agent.tools.service_status import ServiceStatusTool
@@ -22,8 +29,7 @@ _THAI = re.compile(r"[฀-๿]")
 
 @pytest.fixture
 def agent() -> TriageAgent:
-    tools = [CustomerHistoryTool(), KnowledgeBaseTool(), ServiceStatusTool()]
-    return TriageAgent(MockLLMClient(), tools)
+    return TriageAgent(MockLLMClient(), default_tools())
 
 
 @pytest.fixture
@@ -54,6 +60,12 @@ def test_t2_outage_is_critical_and_replies_in_thai(agent, tickets):
     assert result.issue_type == "outage"
     # The customer wrote in Thai, so the draft reply must be in Thai.
     assert _THAI.search(result.suggested_response)
+    # The status-reconciliation trap must fire: the agent detects the Asia incident
+    # even though the public status page says "operational".
+    assert "regional incident" in result.urgency_reason.lower() or any(
+        "degraded" in fact.lower() or "operational" in fact.lower()
+        for fact in result.key_facts
+    )
 
 
 def test_t3_feature_request_is_low_and_auto_respond(agent, tickets):
@@ -79,3 +91,15 @@ def test_service_status_flags_asia_incident():
 def test_unknown_customer_is_handled_gracefully():
     record = CustomerHistoryTool().run(customer_id="does_not_exist")
     assert record["found"] is False
+
+
+def test_submit_schema_stays_in_sync_with_model():
+    """Guard against drift between the pydantic model and the hand-written
+    function schema (the two sources of truth for the submit_triage contract)."""
+    schema = triage_json_schema()
+    model_fields = set(TriageResult.model_fields.keys())
+    assert set(schema["properties"].keys()) == model_fields
+    required_model = {
+        name for name, field in TriageResult.model_fields.items() if field.is_required()
+    }
+    assert set(schema["required"]) == required_model

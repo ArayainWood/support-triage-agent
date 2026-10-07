@@ -14,9 +14,7 @@ from pathlib import Path
 
 from .config import DATA_DIR, settings
 from .schemas import Ticket, TriageResult
-from .tools.customer_history import CustomerHistoryTool
-from .tools.knowledge_base import KnowledgeBaseTool
-from .tools.service_status import ServiceStatusTool
+from .tools import default_tools
 
 
 def _force_utf8_output() -> None:
@@ -36,7 +34,7 @@ def _force_utf8_output() -> None:
 def build_agent(use_mock: bool):
     from .agent import TriageAgent
 
-    tools = [CustomerHistoryTool(), KnowledgeBaseTool(), ServiceStatusTool()]
+    tools = default_tools(use_mock)
     if use_mock:
         from .llm.mock_client import MockLLMClient
 
@@ -116,13 +114,25 @@ def main(argv: list[str] | None = None) -> int:
 
     agent = build_agent(use_mock)
     backend = "mock" if use_mock else f"openai:{settings.model}"
-    print(f"Triage Agent  |  backend={backend}  |  tickets={len(tickets)}\n")
+    # Status banner goes to stderr so --json output on stdout stays pure JSON.
+    print(f"Triage Agent  |  backend={backend}  |  tickets={len(tickets)}\n", file=sys.stderr)
 
-    results = [agent.run(t) for t in tickets]
+    json_outputs: list[dict] = []
+    failures = 0
+    for ticket in tickets:
+        try:
+            result = agent.run(ticket)
+        except Exception as exc:  # one bad ticket must not sink the whole batch
+            failures += 1
+            print(f"[{ticket.id}] triage failed: {exc}", file=sys.stderr)
+            if args.json:
+                json_outputs.append({"ticket_id": ticket.id, "error": str(exc)})
+            continue
+        if args.json:
+            json_outputs.append(result.model_dump())
+        else:
+            _print_report(result)
 
     if args.json:
-        print(json.dumps([r.model_dump() for r in results], ensure_ascii=False, indent=2))
-    else:
-        for result in results:
-            _print_report(result)
-    return 0
+        print(json.dumps(json_outputs, ensure_ascii=False, indent=2))
+    return 1 if failures else 0
