@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from typing import Any
+
 from ..config import settings
 from .base import LLMResponse, ToolCall
 
@@ -22,13 +24,16 @@ class OpenAIClient:
         self._temperature = settings.temperature if temperature is None else temperature
 
     def complete(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        tool_choice: Any = "auto",
     ) -> LLMResponse:
         resp = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             tools=tools,
-            tool_choice="auto",
+            tool_choice=tool_choice,
             temperature=self._temperature,
         )
         msg = resp.choices[0].message

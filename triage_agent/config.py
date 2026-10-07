@@ -28,7 +28,7 @@ class Settings:
     model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     embedding_model: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
     retriever: str = os.getenv("RETRIEVER", "lexical")  # "lexical" | "embedding"
-    max_agent_steps: int = int(os.getenv("MAX_AGENT_STEPS", "6"))
+    max_agent_steps: int = int(os.getenv("MAX_AGENT_STEPS", "8"))
     temperature: float = float(os.getenv("TEMPERATURE", "0.2"))
     use_mock: bool = os.getenv("USE_MOCK", "").strip().lower() in _TRUTHY
 

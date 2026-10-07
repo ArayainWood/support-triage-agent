@@ -34,7 +34,10 @@ class MockLLMClient:
         self._counter = 0  # per-instance so tool-call ids are reproducible per run
 
     def complete(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        tool_choice: Any = "auto",
     ) -> LLMResponse:
         gathered = {m.get("name") for m in messages if m.get("role") == "tool"}
         ticket_text = self._ticket_text(messages)

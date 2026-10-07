@@ -36,7 +36,7 @@
 | **Malformed model output** | Terminal tool has a strict schema; result is pydantic-validated; invalid JSON/data raises a clear error. |
 | **Retrieval miss / empty KB hit** | Lexical scores are normalised and thresholded; the model is told to escalate rather than guess when evidence is thin. |
 | **Tool failure** | `ToolRegistry.dispatch` returns an `{"error": ...}` payload to the model instead of crashing the run. |
-| **Infinite / runaway loops** | Hard `MAX_AGENT_STEPS` cap. |
+| **Runaway loop / model never submits** | Hard `MAX_AGENT_STEPS` cap; on reaching it the agent *forces* a final `submit_triage` (tool_choice) from the evidence so far instead of failing the ticket. |
 | **Wrong language reply** | Prompt enforces language mirroring; regression-tested on the Thai ticket. |
 | **Secret leakage** | Key is read from env by the SDK only; `.env` is git-ignored; nothing is logged. |
 | **Under-triaging escalation** | Urgency weighs sentiment *trajectory* and account tier, so a calm-then-furious billing thread and an enterprise outage both land as `critical`. |

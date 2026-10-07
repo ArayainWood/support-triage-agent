@@ -5,12 +5,14 @@ reviewer to run immediately after `pip install -r requirements.txt`.
 """
 from __future__ import annotations
 
+import json
 import re
 
 import pytest
 
 from triage_agent.agent import TriageAgent
 from triage_agent.cli import load_tickets
+from triage_agent.llm.base import LLMResponse, ToolCall
 from triage_agent.llm.mock_client import MockLLMClient
 from triage_agent.schemas import (
     Action,
@@ -91,6 +93,50 @@ def test_service_status_flags_asia_incident():
 def test_unknown_customer_is_handled_gracefully():
     record = CustomerHistoryTool().run(customer_id="does_not_exist")
     assert record["found"] is False
+
+
+class _NeverSubmitsClient:
+    """Stub LLM that keeps requesting a tool and never submits on its own,
+    unless the caller forces submit via tool_choice — exercising the agent's
+    force-submit fallback when MAX_AGENT_STEPS is exhausted."""
+
+    def __init__(self) -> None:
+        self.turns = 0
+
+    def complete(self, messages, tools, tool_choice="auto"):
+        if isinstance(tool_choice, dict):  # agent is forcing submit_triage
+            args = {
+                "ticket_id": "t1",
+                "urgency": "high",
+                "urgency_reason": "forced decision from gathered evidence",
+                "product_area": "Payments & subscriptions",
+                "issue_type": "billing",
+                "sentiment": "frustrated",
+                "sentiment_trend": "escalating",
+                "recommended_action": "escalate_to_human",
+                "suggested_response": "We are looking into your billing issue now.",
+                "confidence": 0.5,
+                "needs_human_review": True,
+            }
+            return LLMResponse(
+                tool_calls=[ToolCall(id="forced", name="submit_triage",
+                                     arguments=json.dumps(args))]
+            )
+        self.turns += 1
+        return LLMResponse(
+            tool_calls=[ToolCall(id=f"g{self.turns}", name="lookup_customer_history",
+                                 arguments=json.dumps({"customer_id": "cus_free_001"}))]
+        )
+
+
+def test_force_submit_when_model_never_submits(tickets):
+    from triage_agent.schemas import Urgency
+
+    agent = TriageAgent(_NeverSubmitsClient(), default_tools())
+    result = agent.run(tickets["t1"])  # must not raise despite never self-submitting
+    assert isinstance(result, TriageResult)
+    assert result.ticket_id == "t1"
+    assert result.urgency is Urgency.HIGH
 
 
 def test_submit_schema_stays_in_sync_with_model():

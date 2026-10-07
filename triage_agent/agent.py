@@ -87,9 +87,26 @@ class TriageAgent:
                     }
                 )
 
-        raise RuntimeError(
-            f"Agent did not submit a decision within {settings.max_agent_steps} steps."
-        )
+        # Ran out of steps while still gathering — compel a final decision from the
+        # evidence collected so far rather than failing the ticket.
+        return self._force_submit(ticket, messages)
+
+    def _force_submit(self, ticket: Ticket, messages: list[dict[str, Any]]) -> TriageResult:
+        messages = messages + [
+            {
+                "role": "user",
+                "content": (
+                    f"Stop gathering information and call {SUBMIT_TOOL_NAME} now with your "
+                    "best decision based on the evidence collected so far."
+                ),
+            }
+        ]
+        forced = {"type": "function", "function": {"name": SUBMIT_TOOL_NAME}}
+        response = self._llm.complete(messages, self._tool_schemas, tool_choice=forced)
+        for call in response.tool_calls:
+            if call.name == SUBMIT_TOOL_NAME:
+                return self._finalize(ticket, call.arguments)
+        raise RuntimeError("Agent failed to submit a decision even when forced to.")
 
     # -- helpers -------------------------------------------------------------
     @staticmethod

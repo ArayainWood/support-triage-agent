@@ -29,7 +29,14 @@ class LLMResponse:
 
 class LLMClient(Protocol):
     def complete(
-        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        tool_choice: Any = "auto",
     ) -> LLMResponse:
-        """Run one completion given the running transcript and tool schemas."""
+        """Run one completion given the running transcript and tool schemas.
+
+        ``tool_choice`` is "auto" normally, or a forced function spec when the
+        agent needs to compel a specific tool (used to force the final submit).
+        """
         ...
