@@ -1,62 +1,47 @@
 # Write-up — Support Ticket Triage Agent
 
-## Architecture decisions (and why)
+## Architecture (and why)
 
-- **Agent = tool-calling loop ending in a terminal tool.** The model gathers
-  evidence with tools, then must call `submit_triage` (typed by `TriageResult`).
-  Forcing the final answer through a typed tool guarantees a complete, structured,
-  machine-usable decision instead of prose we would have to parse. The output is
-  validated with pydantic, so a malformed decision fails loudly rather than
-  silently flowing downstream.
-- **Provider-agnostic `LLMClient`.** The loop depends on a small interface, not
-  on the OpenAI SDK. That gave us a **deterministic offline mock** for free —
-  the whole pipeline (and the test-suite) runs with no key and no network — and
-  leaves the door open to other providers or self-hosted models (which the role
-  explicitly cares about).
-- **Three tools, registry-driven.** `lookup_customer_history`,
-  `search_knowledge_base`, `check_service_status`. Adding a capability is just a
-  new `Tool` subclass; the agent never changes. `check_service_status` exists
-  because sample ticket #2 shows the classic trap — the public status page says
-  "operational" while a region is actually down — so the agent must verify, not
-  trust.
-- **Pluggable RAG retrieval.** Default is a zero-dependency IDF-weighted lexical
-  retriever (runs anywhere); `RETRIEVER=embedding` switches to OpenAI embeddings
-  + cosine similarity. The KB is where real systems evolve most, so it is the
-  seam we made easiest to replace (hybrid search / reranking slot in here).
-- **Prompt as a deliverable.** The system prompt encodes the urgency rubric,
-  the "read the whole thread / weigh sentiment trajectory" rule, language
-  mirroring, and grounding guardrails — kept in one file so it is reviewable and
-  tunable without code changes.
+- **Tool-calling loop ending in a terminal tool.** The model gathers evidence with
+  tools, then must call `submit_triage` (typed by `TriageResult`). Routing the final
+  answer through a typed tool guarantees a complete, structured, validated decision
+  instead of prose to parse. If the step cap is hit, the agent *forces* a final
+  submit rather than failing the ticket.
+- **Provider-agnostic `LLMClient`.** The loop depends on a tiny interface, not the
+  OpenAI SDK — which gave us a deterministic offline **mock** (the whole pipeline and
+  the tests run with no key/network) and room for other or self-hosted models.
+- **Registry-driven tools (3).** `lookup_customer_history`, `search_knowledge_base`,
+  `check_service_status`. Adding one is just a new `Tool` subclass; the agent never
+  changes. The status check exists because ticket #2 shows the trap: the public page
+  says "operational" while a region is actually down.
+- **Pluggable RAG retrieval.** Default is a zero-dependency lexical retriever;
+  `RETRIEVER=embedding` switches to OpenAI embeddings. The KB is the seam that evolves
+  most (hybrid search / reranking slot in here).
+- **Prompt as a deliverable** (`prompts.py`): urgency rubric, read-the-whole-thread /
+  sentiment-trajectory rule, language mirroring, and grounding guardrails.
 
-## What could go wrong — and how it's handled
+## What could go wrong — and the handling
 
 | Risk | Mitigation |
 |------|------------|
-| **Hallucinated facts / promises** (e.g. "we refunded you") | Prompt forbids claims not grounded in tool output; billing KB says never promise refunds for *authorized-but-not-captured* charges; `needs_human_review` + lower confidence when unsure. |
-| **Malformed model output** | Terminal tool has a strict schema; result is pydantic-validated; invalid JSON/data raises a clear error. |
-| **Retrieval miss / empty KB hit** | Lexical scores are normalised and thresholded; the model is told to escalate rather than guess when evidence is thin. |
-| **Tool failure** | `ToolRegistry.dispatch` returns an `{"error": ...}` payload to the model instead of crashing the run. |
-| **Runaway loop / model never submits** | Hard `MAX_AGENT_STEPS` cap; on reaching it the agent *forces* a final `submit_triage` (tool_choice) from the evidence so far instead of failing the ticket. |
-| **Wrong language reply** | Prompt enforces language mirroring; regression-tested on the Thai ticket. |
-| **Secret leakage** | Key is read from env by the SDK only; `.env` is git-ignored; nothing is logged. |
-| **Under-triaging escalation** | Urgency weighs sentiment *trajectory* and account tier, so a calm-then-furious billing thread and an enterprise outage both land as `critical`. |
+| Hallucinated facts / promises | Prompt forbids ungrounded claims and separates pending authorizations from captured charges; `needs_human_review` + low confidence when unsure |
+| Malformed model output | Typed terminal tool + pydantic validation; scores clamped before validation |
+| Model never submits | Step cap → forced final `submit_triage` |
+| Retrieval miss | Normalised, thresholded scores; model told to escalate, not guess, on thin evidence |
+| Tool failure | Dispatch returns an error payload to the model; the run never crashes |
+| Wrong-language reply | Prompt enforces mirroring; regression-tested on the Thai ticket |
+| Secret leakage | Key read from env by the SDK only; `.env` git-ignored; nothing logged |
 
-## How I'd evaluate this in production
+## Evaluating in production
 
-- **Offline eval set.** A labelled corpus of tickets (urgency, action, issue
-  type, language) covering billing, outages, how-tos, feature requests, plus
-  adversarial/multilingual/ambiguous cases. Track **accuracy/F1 on urgency &
-  action**, plus a confusion matrix — the costly error is *under*-escalating a
-  critical ticket, so weight recall on `critical` accordingly.
-- **Retrieval quality.** Measure recall@k / MRR of `search_knowledge_base`
-  against known-relevant docs; alert on empty-hit rate.
-- **Grounding / hallucination.** LLM-as-judge (plus spot human review) scoring
-  whether each `suggested_response` is supported by tool results; track an
-  unsupported-claim rate.
-- **Online signals.** Human-override rate (did an agent change the urgency/route?),
-  reopen rate, time-to-first-response, and CSAT on auto-responded tickets,
-  segmented by language and plan.
-- **Safety rails in prod.** Start in *suggest-only* mode (human approves sends),
-  shadow-run new prompts/models against the eval set before rollout, log every
-  decision with its tool evidence for audit, and alert on confidence drops or
-  escalation-rate spikes.
+- **Offline eval set** labelled for urgency / action / issue / language (incl.
+  adversarial and multilingual cases). Track urgency & action F1 and a confusion
+  matrix, weighting recall on `critical` — under-escalation is the costly error.
+- **Retrieval quality:** recall@k / MRR for `search_knowledge_base`; alert on
+  empty-hit rate.
+- **Grounding:** LLM-as-judge plus spot human review scoring whether each reply is
+  supported by tool results; track an unsupported-claim rate.
+- **Online signals:** human-override rate, reopen rate, time-to-first-response and
+  CSAT, segmented by language and plan.
+- **Rollout safety:** start suggest-only (human approves sends), shadow-test new
+  prompts/models on the eval set, and log every decision with its evidence.
