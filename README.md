@@ -67,7 +67,7 @@ All via environment variables / `.env` (defaults in parentheses):
 | `OPENAI_MODEL`           | Chat model (`gpt-4o-mini`)                          |
 | `OPENAI_EMBEDDING_MODEL` | Embedding model for semantic KB (`text-embedding-3-small`) |
 | `RETRIEVER`              | `lexical` (default) or `embedding`                  |
-| `MAX_AGENT_STEPS`        | Max tool-calling rounds per ticket (`6`)            |
+| `MAX_AGENT_STEPS`        | Max tool-calling rounds per ticket (`8`)            |
 | `TEMPERATURE`            | Sampling temperature (`0.2`)                        |
 | `USE_MOCK`               | `1` forces the offline backend                      |
 
